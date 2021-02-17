@@ -1,0 +1,477 @@
+module alu (aclk,mdat,acc_out, opcd, alu_out, zr);
+
+input       aclk;
+input       [7:0]  mdat;
+input       [7:0] acc_out;
+input       [2:0] opcd; 
+output      [7:0] alu_out;
+output              zr;
+
+reg [7:0] a;
+wire [7:0] alu_out; 
+wire zr;
+     always  @ ( posedge aclk ) begin
+
+         case (opcd) 
+                 3'b000 : begin
+                             a  <= acc_out;                     
+                 end
+                    
+                 3'b001 : begin
+                            a  <=acc_out;                                        
+                          end
+                        
+            3'b010 : begin
+                                a  <= {mdat + acc_out};                      
+                         end
+
+                3'b011 : begin
+                                a <= {mdat & acc_out};
+                                        
+                         end
+
+                3'b100 : begin
+                                a  <= {mdat ^ acc_out};                          
+                         end
+
+                3'b101 : begin
+                                a  <= mdat;
+                                      
+                         end
+            3'b110 : begin
+                                a  <= acc_out;
+                                        
+                         end
+      
+              3'b111 : begin
+                            a <= acc_out;
+                                        
+                         end              
+
+                default : begin
+                             a <= 0;
+                          end
+           endcase
+
+     end
+assign alu_out = a;
+assign zr = &(a);                       
+endmodule
+
+module accum(clk, rst, alu_out, ldac, acc_out);
+
+input  clk, rst, ldac;
+input  [7:0] alu_out;
+output [7:0] acc_out;
+reg    [7:0] acc_out;
+    
+    always @ (posedge clk or negedge rst) begin
+
+                if (!rst) begin
+                       acc_out <= 0;
+                end else if ( ldac == 1) begin
+                        acc_out <= alu_out[7:0];
+                end                
+      end
+
+endmodule
+
+module clkgen(clk,rstreq,clk1,clk2,fch,rst);
+
+input clk,rstreq;
+output clk1,clk2,fch,rst;
+
+wire c1;
+reg c2,c3;
+reg rst;
+
+      assign c1   = clk && clk;
+      assign clk1 = c1; 
+
+      always @(negedge c1 or negedge rstreq) begin
+
+            if (!rstreq) begin
+                  c2 <= 0;                
+            end else begin
+                  c2 <= ~c2;
+            end
+      end
+
+
+      always @(posedge c2 or negedge rstreq) begin
+            if(!rstreq) begin
+                  c3 <= 0;
+            end else begin
+                  c3 <= ~c3;
+            end
+      end               
+
+
+      always @(negedge c2 or negedge rstreq) begin
+            if(!rstreq) begin
+                  rst <= 0;
+            end else begin
+                if (c3 == 0) begin
+                  rst <= 1;
+                end
+            end
+      end 
+
+
+assign clk2  = c2;
+assign fch = c3;
+
+
+endmodule
+module decode(clk1,clk2,fch,rst,opcd,ldir,ldac,mrd,mwr,ldpc,pclk,aclk);
+input clk1;
+input clk2;
+input rst;
+input fch;
+input [2:0] opcd;
+output ldir;
+output ldac;
+output mrd;
+output mwr;
+output ldpc;
+output pclk;
+output aclk;
+reg  aclk;
+wire [2:0] seq;
+reg [7:0] dout;
+
+assign seq = {clk1,clk2,fch};
+
+always @(*) begin
+
+      if(!rst) begin
+            dout = 0;
+      end else begin
+
+            case(seq) 
+                  3'b011      : begin
+                              dout =  6'b000000;
+                          end       
+                  3'b111      : begin
+                              dout =  6'b000010;
+                          end       
+                  3'b001      : begin
+                              dout =  6'b000011;
+                          end       
+                  3'b101      : begin
+                              dout =  6'b000011;
+                          end       
+                  3'b010      : begin
+                              dout =  6'b000000;
+                          end       
+                  3'b110      : begin
+
+                           case(opcd) 
+      
+                              3'b010 : begin
+                                          dout =  6'b100010;
+                                      end       
+                              3'b011 : begin
+                                          dout =  6'b100010; 
+                                      end
+                              3'b100 : begin
+                                          dout =  6'b100010; 
+                                      end
+                              3'b101 : begin
+                                          dout =  6'b100010; 
+                                      end
+                              default : begin
+                                          dout =  6'b100000; 
+                                      end
+                            endcase
+                             end
+                  3'b000      : begin
+
+                           case(opcd) 
+      
+                              3'b010 : begin
+                                          dout =  6'b010010;
+                                      end       
+                              3'b011 : begin
+                                          dout =  6'b010010; 
+                                      end
+                              3'b100 : begin
+                                          dout =  6'b010010; 
+                                      end
+                              3'b101 : begin
+                                          dout =  6'b010010; 
+                                      end
+                              3'b110 : begin
+                                          dout =  6'b000100; 
+                                      end
+                              3'b001 : begin
+                                          dout =  6'b100000; 
+                                      end
+                              3'b111 : begin
+                                          dout =  6'b001000; 
+                                      end
+
+                              default : begin
+                                          dout =  6'b000000; 
+                                      end
+                            endcase
+                             end
+                  3'b100      : begin
+
+                           case(opcd) 
+      
+                              3'b010 : begin
+                                          dout =  6'b010010;
+                                      end       
+                              3'b011 : begin
+                                          dout =  6'b010010; 
+                                      end
+                              3'b100 : begin
+                                          dout =  6'b010010; 
+                                      end
+                              3'b101 : begin
+                                          dout =  6'b010010; 
+                                      end
+                              3'b001 : begin
+                                          dout =  6'b100000; 
+                                      end
+                              3'b111 : begin
+                                          dout =  6'b101000; 
+                                      end
+                              3'b110 : begin
+                                          dout =  6'b000100; 
+                                      end
+
+                              default : begin
+                                          dout =  6'b000000; 
+                                      end
+                            endcase
+                        end
+            
+            endcase
+      end
+end
+
+
+assign ldir = dout[0];
+assign mrd   = dout[1];
+assign mwr  = dout[2];
+assign ldpc = dout[3];
+assign ldac = dout[4];
+assign pclk = dout[5];
+
+
+always @(*) begin
+      if(!rst) begin
+            aclk = 0;
+      end else begin
+            case(seq) 
+
+                  3'b100  : aclk = 0;
+                  
+                  default : aclk = 1;
+
+            endcase
+      end
+end
+endmodule
+module instreg(clk,rst,ldir,mdat,adir,opcd);
+
+input   clk;
+input   ldir;
+input rst;
+input   [7:0] mdat;
+output  [4:0] adir;
+output  [2:0] opcd;
+reg     [4:0] adir;
+reg   [2:0] opcd;
+    
+    always @(posedge clk or negedge rst) begin
+      if (!rst) begin  
+            opcd <= 0;
+            adir <= 0;  
+        end else if (ldir == 1) begin
+                 opcd <= mdat[7:3] ; 
+                        adir <= mdat[2:0] ;
+        end
+    end
+
+endmodule
+module iobuffer(clk2,mrd,fch,alu_out,mdat);
+input clk2,mrd,fch;
+input [7:0] alu_out;
+output [7:0] mdat;
+wire en, en1;
+assign en = mrd || fch || clk2;
+assign en1 = ~en;
+assign mdat = (en1) ?  alu_out : 'hzz ;
+endmodule
+module memory(rst,mrd,mwr,ewr,mad,ead,edat,mdat);
+input rst;
+input mrd;
+input mwr;
+input ewr;
+input [4:0] mad;
+input [4:0] ead;
+input [7:0] edat;
+inout [7:0] mdat;
+reg [7:0] memr [31:0] ;
+reg [7:0] temp;
+always @(*) begin
+
+      if (!rst) begin
+            if(ewr == 1) begin
+                  memr[ead] <= edat;
+            end
+      end else begin
+            if(mwr == 1) begin
+                  memr[mad] <= mdat;
+            end else if (mrd == 1) begin
+                  temp <= memr[mad];
+            end else begin
+                  temp <= 'bzzzzzzzz;
+            end
+      end
+end
+assign mdat = temp;
+endmodule
+module mux2_1(adir, adpc, fch, admem);
+input [4:0] adir;
+input [4:0] adpc;
+input fch;
+output [4:0] admem;
+reg [4:0] admem;
+
+    always @ (fch,adpc,adir) begin
+        
+        case (fch)
+            1'b1 : admem = adpc; 
+          
+            1'b0 : admem = adir;
+        endcase
+    end
+endmodule
+module pc( pclk, rst, adir, ldpc, adpc);   
+input pclk, rst;
+input ldpc;
+input [4:0] adir;
+output [4:0] adpc;
+
+reg [4:0] temp1;
+
+             always @ (posedge pclk or negedge rst) begin
+
+                   if  (!rst) begin
+
+                        temp1 <= 0;
+
+                   end else if  ( ldpc == 1) begin
+                        
+                        temp1 <= adir;
+
+                   end else begin
+                        
+                        temp1 <= temp1 + 1;
+                   end    
+                    
+             end
+
+
+assign adpc = temp1;
+endmodule
+module topmodule(clk,rstreq,ewr,ead,edat,zr);
+
+input clk;
+input rstreq;
+input  ewr;
+input [4:0] ead;
+input [7:0] edat;
+output zr;
+wire zr;
+
+wire clk1;
+wire clk2;
+wire fch;
+wire rst;
+wire [7:0] alu_out;
+wire [7:0] acc_out;
+wire ldac;
+wire ldir;
+wire [7:0] mdat;
+wire [4:0] adir;
+wire [2:0] opcd;
+wire [4:0] adpc;
+wire [4:0] admem;
+wire ldpc;
+wire pclk;
+wire aclk;
+wire mrd;
+wire mwr;
+//wire [4:0] mad;
+
+iobuffer io1( .clk2(clk2), .mrd(mrd) , .fch(fch), .alu_out(alu_out), .mdat(mdat));
+
+accum    accum1( .clk(clk1), .rst(rst), .alu_out(alu_out), .ldac(ldac) , .acc_out(acc_out));
+
+clkgen   clkgen1( .clk(clk), .rstreq(rstreq), .clk1(clk1), .clk2(clk2), .fch(fch), .rst(rst));
+
+decode   decoder1( .clk1(clk1),.clk2(clk2),.fch(fch), .rst(rst), .opcd(opcd),.ldir(ldir),.ldac(ldac),.mrd(mrd),.mwr(mwr),.ldpc(ldpc),.pclk(pclk),.aclk(aclk));
+
+instreg  instreg1( .clk(clk1) , .rst(rst), .ldir(ldir), .mdat(mdat), .adir(adir), .opcd(opcd));
+
+alu      alu1( .aclk(aclk) , .mdat(mdat) , .acc_out(acc_out) , .opcd(opcd) , .alu_out(alu_out) , .zr(zr) );
+
+memory   mem1(.rst(rst) , .mrd(mrd) , .mwr(mwr) , .ewr(ewr), .mad(admem), .ead(ead), .edat(edat), .mdat(mdat));
+
+pc       pc1( .pclk(pclk), .rst(rst), .adir(adir), .ldpc(ldpc), .adpc(adpc));
+
+mux2_1   mux2( .adir(adir), .adpc(adpc), .fch(fch) , .admem(admem));
+
+endmodule
+
+
+module testbench;
+
+reg  clk;
+reg rstreq;
+reg  ewr;
+reg [4:0] ead;
+reg [7:0] edat;
+wire zr;
+integer i;
+topmodule dut11(clk,rstreq,ewr,ead,edat,zr);
+initial begin
+      rstreq  =  1;
+      #1;   
+      @(negedge clk);
+        rstreq = 0;
+      #1;   
+      ewr = 1'd1;
+      #1;    
+      ead = 5'd1;
+      //int i ;   
+      //repeat(31) begin
+      for (i=0; i<32; i = i+1) begin     
+            
+            ead = i;
+            edat   = $random%100;
+            @(negedge clk);
+      end
+        rstreq = 1;
+      @(negedge clk);
+      #0;
+      $finish;
+end
+initial begin
+                  clk =0;
+      forever  # 1  clk = !clk;
+end
+
+initial begin
+	 $display("\t\t  time   clk      rest/req   ewr     ead       edat      \t         zr     \n ");
+  
+     $monitor($time,,,,"  %b           %b      %b     %b      %b       ",clk,rstreq,ewr,ead,edat,zr);
+
+end
+
+endmodule
